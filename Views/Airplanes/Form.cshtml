@@ -1,0 +1,140 @@
+@model AirlineApp.Models.AirplaneFormViewModel
+@{
+    var a       = Model.Airplane;
+    var isView  = Model.Mode == "view";
+    var isCreate = Model.Mode == "create";
+
+    ViewData["Title"] = isCreate ? "Новий літак"
+                      : isView   ? $"Літак {a.Model}"
+                      :            $"Редагувати {a.Model}";
+
+    var formAction = isCreate ? "/airplanes/create" : $"/airplanes/{a.Id}/edit";
+}
+
+<div class="page-header">
+    <h1>
+        @(isCreate ? "✈ Новий літак" : isView ? $"✈ {a.Model}" : $"✏ {a.Model}")
+    </h1>
+    <div class="actions">
+        @if (isView)
+        {
+            <a href="/airplanes/@a.Id/edit" class="btn btn-primary">✏ Редагувати</a>
+        }
+        <a href="/airplanes" class="btn btn-outline">← Назад</a>
+    </div>
+</div>
+
+@* validation summary *@
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="validation-summary">
+        @foreach (var err in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+        {
+            <div>@err.ErrorMessage</div>
+        }
+    </div>
+}
+
+@if (!isView)
+{
+    <div class="card">
+        <form method="post" action="@formAction">
+            @Html.AntiForgeryToken()
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="Model">Модель</label>
+                    <input id="Model" name="Model" value="@a.Model" placeholder="Boeing 737" />
+                    <span class="field-error">@ViewData.ModelState["Model"]?.Errors.FirstOrDefault()?.ErrorMessage</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="RegistrationNumber">Реєстраційний номер</label>
+                    <input id="RegistrationNumber" name="RegistrationNumber" value="@a.RegistrationNumber" placeholder="UR-PSA" />
+                    <span class="field-error">@ViewData.ModelState["RegistrationNumber"]?.Errors.FirstOrDefault()?.ErrorMessage</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="Capacity">Місткість (осіб)</label>
+                    <input id="Capacity" name="Capacity" type="number" min="1" max="1000" value="@(a.Capacity == 0 ? "" : a.Capacity)" placeholder="189" />
+                    <span class="field-error">@ViewData.ModelState["Capacity"]?.Errors.FirstOrDefault()?.ErrorMessage</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="YearManufactured">Рік виробництва</label>
+                    <input id="YearManufactured" name="YearManufactured" type="number" min="1900" max="2100"
+                           value="@(a.YearManufactured == 0 ? "" : a.YearManufactured)" placeholder="2020" />
+                    <span class="field-error">@ViewData.ModelState["YearManufactured"]?.Errors.FirstOrDefault()?.ErrorMessage</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="ManufacturerId">Виробник</label>
+                    <select id="ManufacturerId" name="ManufacturerId">
+                        <option value="0">— Оберіть виробника —</option>
+                        @foreach (var m in Model.Manufacturers)
+                        {
+                            <option value="@m.Id" selected="@(a.ManufacturerId == m.Id)">@m.Name (@m.Country)</option>
+                        }
+                    </select>
+                    <span class="field-error">@ViewData.ModelState["ManufacturerId"]?.Errors.FirstOrDefault()?.ErrorMessage</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="AirlineId">Авіакомпанія</label>
+                    <select id="AirlineId" name="AirlineId">
+                        <option value="0">— Оберіть авіакомпанію —</option>
+                        @foreach (var al in Model.Airlines)
+                        {
+                            <option value="@al.Id" selected="@(a.AirlineId == al.Id)">@al.Name (@al.Country)</option>
+                        }
+                    </select>
+                    <span class="field-error">@ViewData.ModelState["AirlineId"]?.Errors.FirstOrDefault()?.ErrorMessage</span>
+                </div>
+            </div>
+
+            <br />
+            <button type="submit" class="btn btn-primary">
+                @(isCreate ? "✔ Створити" : "✔ Зберегти")
+            </button>
+        </form>
+    </div>
+}
+else
+{
+    @* view mode — show full manufacturer and airline details *@
+    <div class="form-grid">
+        <div class="card">
+            <div style="display:flex; flex-direction:column; gap:.9rem;">
+                <div class="form-group">
+                    <label>Модель</label>
+                    <div style="font-size:1.1rem; font-weight:600;">@a.Model</div>
+                </div>
+                <div class="form-group">
+                    <label>Реєстраційний номер</label>
+                    <div>@a.RegistrationNumber</div>
+                </div>
+                <div class="form-group">
+                    <label>Місткість</label>
+                    <div>@a.Capacity осіб</div>
+                </div>
+                <div class="form-group">
+                    <label>Рік виробництва</label>
+                    <div>@a.YearManufactured</div>
+                </div>
+            </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:1rem;">
+            <div class="detail-block">
+                <span class="label">Виробник</span>
+                <span class="value">@a.Manufacturer?.Name</span>
+                <span class="sub">🌍 @a.Manufacturer?.Country</span>
+            </div>
+            <div class="detail-block">
+                <span class="label">Авіакомпанія</span>
+                <span class="value">@a.Airline?.Name</span>
+                <span class="sub">🌍 @a.Airline?.Country</span>
+            </div>
+        </div>
+    </div>
+}

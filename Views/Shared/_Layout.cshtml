@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@ViewData["Title"] — AirlineApp</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg:       #0f172a;
+            --surface:  #1e293b;
+            --border:   #334155;
+            --primary:  #3b82f6;
+            --primary-h:#2563eb;
+            --danger:   #ef4444;
+            --danger-h: #dc2626;
+            --success:  #22c55e;
+            --text:     #f1f5f9;
+            --muted:    #94a3b8;
+            --radius:   10px;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── nav ── */
+        nav {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 0 2rem;
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            height: 60px;
+        }
+
+        nav .brand {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--primary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+        }
+
+        nav .brand::before { content: "✈"; font-size: 1.3rem; }
+
+        nav a {
+            color: var(--muted);
+            text-decoration: none;
+            font-size: .9rem;
+            font-weight: 500;
+            transition: color .2s;
+        }
+        nav a:hover { color: var(--text); }
+
+        /* ── main ── */
+        main {
+            flex: 1;
+            max-width: 1100px;
+            width: 100%;
+            margin: 2rem auto;
+            padding: 0 1.5rem;
+        }
+
+        /* ── card ── */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+        }
+
+        /* ── page header ── */
+        .page-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+        }
+
+        .page-header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        /* ── buttons ── */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: .4rem;
+            padding: .5rem 1rem;
+            border-radius: 6px;
+            font-size: .875rem;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+            border: none;
+            transition: background .2s, transform .1s;
+        }
+        .btn:active { transform: scale(.97); }
+
+        .btn-primary  { background: var(--primary); color: #fff; }
+        .btn-primary:hover  { background: var(--primary-h); color: #fff; }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+        .btn-outline:hover { background: var(--border); }
+
+        .btn-danger  { background: var(--danger); color: #fff; }
+        .btn-danger:hover  { background: var(--danger-h); }
+
+        .btn-sm { padding: .35rem .75rem; font-size: .8rem; }
+
+        /* ── table ── */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: .9rem;
+        }
+
+        thead th {
+            text-align: left;
+            padding: .75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            color: var(--muted);
+            font-weight: 600;
+            font-size: .8rem;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid var(--border);
+            transition: background .15s;
+        }
+        tbody tr:last-child { border-bottom: none; }
+        tbody tr:hover { background: rgba(255,255,255,.03); }
+
+        tbody td {
+            padding: .85rem 1rem;
+            vertical-align: middle;
+        }
+
+        .badge {
+            display: inline-block;
+            background: rgba(59,130,246,.15);
+            color: var(--primary);
+            border: 1px solid rgba(59,130,246,.3);
+            border-radius: 4px;
+            padding: .1rem .5rem;
+            font-size: .78rem;
+            font-weight: 600;
+        }
+
+        .actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+
+        /* ── form ── */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.25rem;
+        }
+        @@media (max-width: 640px) { .form-grid { grid-template-columns: 1fr; } }
+
+        .form-group { display: flex; flex-direction: column; gap: .4rem; }
+        .form-group.full { grid-column: 1 / -1; }
+
+        label { font-size: .85rem; font-weight: 500; color: var(--muted); }
+
+        input, select {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            padding: .6rem .85rem;
+            font-size: .9rem;
+            font-family: inherit;
+            transition: border-color .2s;
+            width: 100%;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        input[readonly], select[disabled] {
+            opacity: .7;
+            cursor: default;
+        }
+
+        .field-error { color: #f87171; font-size: .8rem; }
+
+        .validation-summary {
+            background: rgba(239,68,68,.1);
+            border: 1px solid rgba(239,68,68,.3);
+            border-radius: 6px;
+            padding: .75rem 1rem;
+            color: #f87171;
+            font-size: .875rem;
+            margin-bottom: 1.25rem;
+        }
+
+        /* ── detail block ── */
+        .detail-block {
+            background: rgba(59,130,246,.05);
+            border: 1px solid rgba(59,130,246,.15);
+            border-radius: 8px;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: .3rem;
+        }
+        .detail-block .label { font-size: .75rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+        .detail-block .value { font-weight: 600; }
+        .detail-block .sub   { font-size: .85rem; color: var(--muted); }
+
+        /* ── empty state ── */
+        .empty {
+            text-align: center;
+            padding: 3rem;
+            color: var(--muted);
+        }
+        .empty .icon { font-size: 3rem; margin-bottom: .75rem; }
+
+        footer {
+            text-align: center;
+            padding: 1rem;
+            color: var(--muted);
+            font-size: .8rem;
+            border-top: 1px solid var(--border);
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="/airplanes" class="brand">AirlineApp</a>
+        <a href="/airplanes">Літаки</a>
+    </nav>
+
+    <main>
+        @RenderBody()
+    </main>
+
+    <footer>AirlineApp &copy; @DateTime.Now.Year</footer>
+</body>
+</html>

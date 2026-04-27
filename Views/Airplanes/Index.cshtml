@@ -1,0 +1,63 @@
+@model IEnumerable<AirlineApp.Models.Airplane>
+@{
+    ViewData["Title"] = "Список літаків";
+}
+
+<div class="page-header">
+    <h1>✈ Літаки</h1>
+    <a href="/airplanes/create" class="btn btn-primary">+ Додати літак</a>
+</div>
+
+<div class="card">
+@if (!Model.Any())
+{
+    <div class="empty">
+        <div class="icon">✈</div>
+        <p>Жодного літака ще не додано</p>
+        <br />
+        <a href="/airplanes/create" class="btn btn-primary">Додати перший</a>
+    </div>
+}
+else
+{
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Модель</th>
+                <th>Реєстрація</th>
+                <th>Місткість</th>
+                <th>Рік</th>
+                <th>Виробник (ID)</th>
+                <th>Авіакомпанія (ID)</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var a in Model)
+        {
+            <tr>
+                <td><span class="badge">@a.Id</span></td>
+                <td><strong>@a.Model</strong></td>
+                <td>@a.RegistrationNumber</td>
+                <td>@a.Capacity</td>
+                <td>@a.YearManufactured</td>
+                <td><span class="badge">@a.ManufacturerId</span></td>
+                <td><span class="badge">@a.AirlineId</span></td>
+                <td>
+                    <div class="actions">
+                        <a href="/airplanes/@a.Id"       class="btn btn-outline btn-sm">👁 Деталі</a>
+                        <a href="/airplanes/@a.Id/edit"  class="btn btn-outline btn-sm">✏ Ред.</a>
+                        <form method="post" action="/airplanes/@a.Id/delete"
+                              onsubmit="return confirm('Видалити літак @a.Model?')">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-danger btn-sm">🗑 Видалити</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}
+</div>
