@@ -1,63 +1,418 @@
 @model IEnumerable<AirlineApp.Models.Airplane>
 @{
-    ViewData["Title"] = "Список літаків";
+    ViewData["Title"] = "Авіапарк";
+    var total = Model.Count();
 }
 
-<div class="page-header">
-    <h1>✈ Літаки</h1>
-    <a href="/airplanes/create" class="btn btn-primary">+ Додати літак</a>
+<style>
+    /* ── page header ── */
+    .ap-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.25rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    .ap-header h1 { font-size: 1.5rem; font-weight: 700; }
+
+    /* ── filter bar ── */
+    .filter-bar {
+        display: flex;
+        gap: .65rem;
+        flex-wrap: wrap;
+        margin-bottom: 1rem;
+        align-items: center;
+    }
+    .filter-label {
+        font-size: .78rem;
+        color: var(--muted);
+        font-weight: 500;
+        white-space: nowrap;
+    }
+    .filter-select {
+        padding: .45rem .75rem;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        color: var(--text);
+        font-size: .85rem;
+        font-family: inherit;
+        cursor: pointer;
+        width: auto;
+        max-width: 200px;
+    }
+    .filter-select:focus { outline: none; border-color: var(--primary); }
+    .filter-clear {
+        padding: .45rem .85rem;
+        background: transparent;
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        color: var(--muted);
+        font-size: .8rem;
+        cursor: pointer;
+        font-family: inherit;
+        transition: background .15s, color .15s;
+    }
+    .filter-clear:hover { background: var(--border); color: var(--text); }
+
+    /* ── table ── */
+    .ap-table-wrap { overflow-x: auto; }
+
+    table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+
+    thead th {
+        padding: .65rem 1rem;
+        border-bottom: 2px solid var(--border);
+        color: var(--muted);
+        font-weight: 600;
+        font-size: .72rem;
+        text-transform: uppercase;
+        letter-spacing: .06em;
+        text-align: left;
+        white-space: nowrap;
+        user-select: none;
+    }
+    thead th.sortable { cursor: pointer; transition: color .15s; }
+    thead th.sortable:hover { color: var(--text); }
+    thead th .sort-icon {
+        display: inline-block;
+        margin-left: .25rem;
+        opacity: .4;
+        font-style: normal;
+        font-size: .65rem;
+    }
+    thead th.sort-asc  .sort-icon,
+    thead th.sort-desc .sort-icon { opacity: 1; color: var(--primary); }
+
+    tbody tr {
+        border-bottom: 1px solid var(--border);
+        transition: background .1s;
+        cursor: pointer;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: rgba(59,130,246,.05); }
+    tbody td { padding: .8rem 1rem; vertical-align: middle; }
+
+    .reg-num {
+        font-family: 'SF Mono', 'Roboto Mono', monospace;
+        font-size: .8rem;
+        color: var(--muted);
+        background: rgba(255,255,255,.04);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: .1rem .4rem;
+    }
+    .model-name { font-weight: 600; }
+
+    .tag {
+        display: inline-block;
+        padding: .15rem .5rem;
+        border-radius: 4px;
+        font-size: .75rem;
+        font-weight: 600;
+        background: rgba(59,130,246,.1);
+        color: #93c5fd;
+        border: 1px solid rgba(59,130,246,.2);
+    }
+    .tag-mfr    { background: rgba(16,185,129,.1);  color: #6ee7b7;  border-color: rgba(16,185,129,.2); }
+    .tag-airline{ background: rgba(139,92,246,.1);  color: #c4b5fd;  border-color: rgba(139,92,246,.2); }
+
+    /* ── row actions ── */
+    .row-actions { display: flex; align-items: center; gap: .5rem; }
+
+    .btn-details {
+        display: inline-flex;
+        align-items: center;
+        gap: .35rem;
+        padding: .38rem .75rem;
+        background: rgba(59,130,246,.1);
+        color: #93c5fd;
+        border: 1px solid rgba(59,130,246,.2);
+        border-radius: 6px;
+        font-size: .8rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: background .15s;
+        white-space: nowrap;
+    }
+    .btn-details:hover { background: rgba(59,130,246,.2); color: #93c5fd; }
+    .btn-details svg { width: 12px; height: 12px; }
+
+    .btn-menu {
+        width: 28px; height: 28px;
+        display: flex; align-items: center; justify-content: center;
+        background: transparent;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        cursor: pointer;
+        color: var(--muted);
+        transition: background .15s, color .15s;
+        padding: 0; flex-shrink: 0;
+    }
+    .btn-menu:hover { background: var(--border); color: var(--text); }
+    .btn-menu svg { width: 14px; height: 14px; pointer-events: none; }
+
+    /* ── FIXED dropdown — rendered in body via JS ── */
+    .dropdown-popup {
+        position: fixed;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 9px;
+        padding: .3rem;
+        min-width: 155px;
+        z-index: 9999;
+        box-shadow: 0 8px 30px rgba(0,0,0,.6);
+        display: none;
+    }
+    .dropdown-popup.open { display: block; }
+    .dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        padding: .5rem .8rem;
+        border-radius: 6px;
+        font-size: .85rem;
+        font-weight: 500;
+        color: var(--text);
+        text-decoration: none;
+        cursor: pointer;
+        width: 100%;
+        background: none;
+        border: none;
+        font-family: inherit;
+        transition: background .12s;
+        white-space: nowrap;
+    }
+    .dropdown-item:hover { background: rgba(255,255,255,.07); }
+    .dropdown-item.danger { color: #fca5a5; }
+    .dropdown-item.danger:hover { background: rgba(239,68,68,.1); }
+    .dropdown-item svg { width: 14px; height: 14px; opacity: .6; flex-shrink: 0; }
+
+    /* ── empty ── */
+    .empty { text-align: center; padding: 3rem; color: var(--muted); }
+    .empty-icon { width: 48px; height: 48px; margin: 0 auto .75rem; opacity: .25; }
+    .empty-icon svg { width: 100%; height: 100%; }
+    .empty p { margin-bottom: 1.25rem; }
+
+    .del-form { display: none; }
+
+    .count-badge {
+        display: inline-block;
+        background: rgba(255,255,255,.06);
+        border: 1px solid var(--border);
+        border-radius: 50px;
+        padding: .08rem .6rem;
+        font-size: .72rem;
+        color: var(--muted);
+        font-weight: 600;
+        vertical-align: middle;
+        margin-left: .4rem;
+    }
+</style>
+
+<!-- single floating dropdown, appended to body -->
+<div id="dropdownPopup" class="dropdown-popup">
+    <a id="ddEdit" href="#" class="dropdown-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        Редагувати
+    </a>
+    <button id="ddDelete" class="dropdown-item danger">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+        Видалити
+    </button>
 </div>
 
-<div class="card">
-@if (!Model.Any())
-{
-    <div class="empty">
-        <div class="icon">✈</div>
-        <p>Жодного літака ще не додано</p>
-        <br />
-        <a href="/airplanes/create" class="btn btn-primary">Додати перший</a>
-    </div>
-}
-else
-{
-    <table>
-        <thead>
-            <tr>
-                <th>#</th>
-                <th>Модель</th>
-                <th>Реєстрація</th>
-                <th>Місткість</th>
-                <th>Рік</th>
-                <th>Виробник (ID)</th>
-                <th>Авіакомпанія (ID)</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-        @foreach (var a in Model)
+<div class="ap-header">
+    <h1>
+        Авіапарк
+        <span class="count-badge" id="rowCount">@total</span>
+    </h1>
+    <a href="/airplanes/create" class="btn btn-primary">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        Додати літак
+    </a>
+</div>
+
+<!-- FILTERS: only manufacturer + airline -->
+<div class="filter-bar">
+    <span class="filter-label">Виробник:</span>
+    <select class="filter-select" id="filterMfr" onchange="applyFilters()">
+        <option value="">Усі</option>
+        @foreach (var m in Model.Where(x => x.Manufacturer != null).Select(x => x.Manufacturer!.Name).Distinct().OrderBy(x => x))
         {
-            <tr>
-                <td><span class="badge">@a.Id</span></td>
-                <td><strong>@a.Model</strong></td>
-                <td>@a.RegistrationNumber</td>
-                <td>@a.Capacity</td>
-                <td>@a.YearManufactured</td>
-                <td><span class="badge">@a.ManufacturerId</span></td>
-                <td><span class="badge">@a.AirlineId</span></td>
-                <td>
-                    <div class="actions">
-                        <a href="/airplanes/@a.Id"       class="btn btn-outline btn-sm">👁 Деталі</a>
-                        <a href="/airplanes/@a.Id/edit"  class="btn btn-outline btn-sm">✏ Ред.</a>
-                        <form method="post" action="/airplanes/@a.Id/delete"
-                              onsubmit="return confirm('Видалити літак @a.Model?')">
-                            @Html.AntiForgeryToken()
-                            <button type="submit" class="btn btn-danger btn-sm">🗑 Видалити</button>
-                        </form>
-                    </div>
-                </td>
-            </tr>
+            <option>@m</option>
         }
-        </tbody>
-    </table>
-}
+    </select>
+    <span class="filter-label">Авіакомпанія:</span>
+    <select class="filter-select" id="filterAirline" onchange="applyFilters()">
+        <option value="">Усі</option>
+        @foreach (var al in Model.Where(x => x.Airline != null).Select(x => x.Airline!.Name).Distinct().OrderBy(x => x))
+        {
+            <option>@al</option>
+        }
+    </select>
+    <button class="filter-clear" onclick="clearFilters()">Скинути</button>
+    <span class="filter-label" style="margin-left:auto">
+        Показано: <span id="visibleCount">@total</span> з @total
+    </span>
 </div>
+
+<div class="card" style="padding:0; overflow:visible;">
+    @if (!Model.Any())
+    {
+        <div class="empty">
+            <div class="empty-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+            </div>
+            <p>Жодного літака ще не додано</p>
+            <a href="/airplanes/create" class="btn btn-primary">Додати перший</a>
+        </div>
+    }
+    else
+    {
+        <div class="ap-table-wrap">
+            <table id="apTable">
+                <thead>
+                    <tr>
+                        <th class="sortable" onclick="sortTable(0)">ID <i class="sort-icon">↕</i></th>
+                        <th class="sortable" onclick="sortTable(1)">Модель <i class="sort-icon">↕</i></th>
+                        <th class="sortable" onclick="sortTable(2)">Реєстрація <i class="sort-icon">↕</i></th>
+                        <th class="sortable" onclick="sortTable(3)">Місткість <i class="sort-icon">↕</i></th>
+                        <th class="sortable" onclick="sortTable(4)">Рік <i class="sort-icon">↕</i></th>
+                        <th class="sortable" onclick="sortTable(5)">Виробник <i class="sort-icon">↕</i></th>
+                        <th class="sortable" onclick="sortTable(6)">Авіакомпанія <i class="sort-icon">↕</i></th>
+                        <th style="width:130px;"></th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                @foreach (var a in Model)
+                {
+                    <tr onclick="rowClick(event,'@a.Id')"
+                        data-mfr="@(a.Manufacturer?.Name ?? "")"
+                        data-airline="@(a.Airline?.Name ?? "")">
+                        <td><span class="tag">@a.Id</span></td>
+                        <td><span class="model-name">@a.Model</span></td>
+                        <td><span class="reg-num">@a.RegistrationNumber</span></td>
+                        <td>@a.Capacity</td>
+                        <td>@a.YearManufactured</td>
+                        <td><span class="tag tag-mfr">@(a.Manufacturer?.Name ?? "—")</span></td>
+                        <td><span class="tag tag-airline">@(a.Airline?.Name ?? "—")</span></td>
+                        <td>
+                            <div class="row-actions" onclick="event.stopPropagation()">
+                                <a href="/airplanes/@a.Id" class="btn-details">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                    Деталі
+                                </a>
+                                <button class="btn-menu"
+                                    onclick="openMenu(this,'@a.Id','@a.Model')"
+                                    title="Дії">
+                                    <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+                                </button>
+                            </div>
+                            <form id="del-@a.Id" method="post" action="/airplanes/@a.Id/delete" class="del-form">
+                                @Html.AntiForgeryToken()
+                            </form>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+<script>
+(function(){
+    /* ── Sort ── */
+    var sortCol = -1, sortAsc = true;
+    window.sortTable = function(col){
+        var ths = document.querySelectorAll('#apTable thead th');
+        ths.forEach(function(th){
+            th.classList.remove('sort-asc','sort-desc');
+            var ic = th.querySelector('.sort-icon');
+            if (ic) ic.textContent = '↕';
+        });
+        if (sortCol === col) sortAsc = !sortAsc; else { sortCol = col; sortAsc = true; }
+        var th = ths[col];
+        th.classList.add(sortAsc ? 'sort-asc' : 'sort-desc');
+        th.querySelector('.sort-icon').textContent = sortAsc ? '↑' : '↓';
+
+        var tbody = document.getElementById('tableBody');
+        var rows = Array.from(tbody.querySelectorAll('tr'));
+        rows.sort(function(a, b){
+            var va = a.querySelectorAll('td')[col]?.textContent.trim() || '';
+            var vb = b.querySelectorAll('td')[col]?.textContent.trim() || '';
+            var na = parseFloat(va), nb = parseFloat(vb);
+            if (!isNaN(na) && !isNaN(nb)) return sortAsc ? na-nb : nb-na;
+            return sortAsc ? va.localeCompare(vb,'uk') : vb.localeCompare(va,'uk');
+        });
+        rows.forEach(function(r){ tbody.appendChild(r); });
+    };
+
+    /* ── Filters ── */
+    window.applyFilters = function(){
+        var mfr     = document.getElementById('filterMfr').value;
+        var airline = document.getElementById('filterAirline').value;
+        var rows    = document.querySelectorAll('#tableBody tr');
+        var vis = 0;
+        rows.forEach(function(r){
+            var okM = !mfr     || r.dataset.mfr     === mfr;
+            var okA = !airline || r.dataset.airline  === airline;
+            var show = okM && okA;
+            r.style.display = show ? '' : 'none';
+            if (show) vis++;
+        });
+        document.getElementById('visibleCount').textContent = vis;
+        document.getElementById('rowCount').textContent = vis;
+    };
+    window.clearFilters = function(){
+        document.getElementById('filterMfr').value = '';
+        document.getElementById('filterAirline').value = '';
+        applyFilters();
+    };
+
+    /* ── Row click ── */
+    window.rowClick = function(e, id){
+        if (e.target.closest('.row-actions')) return;
+        window.location.href = '/airplanes/' + id;
+    };
+
+    /* ── Dropdown (fixed, single instance) ── */
+    var popup   = document.getElementById('dropdownPopup');
+    var ddEdit  = document.getElementById('ddEdit');
+    var ddDel   = document.getElementById('ddDelete');
+    var currentId    = null;
+    var currentModel = null;
+
+    window.openMenu = function(btn, id, model){
+        currentId    = id;
+        currentModel = model;
+        ddEdit.href  = '/airplanes/' + id + '/edit';
+        var rect = btn.getBoundingClientRect();
+        popup.style.top  = (rect.bottom + window.scrollY + 4) + 'px';
+        popup.style.left = (rect.right  + window.scrollX - popup.offsetWidth - 2) + 'px';
+        // make visible briefly to get offsetWidth
+        popup.style.visibility = 'hidden';
+        popup.classList.add('open');
+        // reposition now that we know width
+        popup.style.left = (rect.right + window.scrollX - popup.offsetWidth - 2) + 'px';
+        popup.style.visibility = '';
+    };
+
+    ddDel.addEventListener('click', function(){
+        popup.classList.remove('open');
+        if (confirm('Видалити борт «' + currentModel + '»?')) {
+            document.getElementById('del-' + currentId).submit();
+        }
+    });
+
+    document.addEventListener('click', function(e){
+        if (!e.target.closest('.btn-menu') && !e.target.closest('#dropdownPopup')) {
+            popup.classList.remove('open');
+        }
+    });
+})();
+</script>

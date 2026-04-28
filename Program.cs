@@ -24,7 +24,7 @@ using (var scope = app.Services.CreateScope())
 
 app.UseStaticFiles();
 app.UseRouting();
-app.MapGet("/", () => Results.Redirect("/airplanes"));
+// "/" is handled by HomeController
 app.MapControllers();
 
 app.Run();

@@ -1,33 +1,245 @@
 @model AirlineApp.Models.AirplaneFormViewModel
 @{
-    var a       = Model.Airplane;
-    var isView  = Model.Mode == "view";
+    var a        = Model.Airplane;
+    var isView   = Model.Mode == "view";
     var isCreate = Model.Mode == "create";
+    var isEdit   = Model.Mode == "edit";
 
     ViewData["Title"] = isCreate ? "Новий літак"
-                      : isView   ? $"Літак {a.Model}"
+                      : isView   ? $"{a.Model} — Деталі"
                       :            $"Редагувати {a.Model}";
 
     var formAction = isCreate ? "/airplanes/create" : $"/airplanes/{a.Id}/edit";
+
+    // Map manufacturer/airline name → image key
+    string MfrImg(string? name) => (name?.ToLower() ?? "") switch {
+        var n when n.Contains("boeing")  => "/img/manufacturers/boeing.png",
+        var n when n.Contains("airbus")  => "/img/manufacturers/airbus.png",
+        var n when n.Contains("embraer") => "/img/manufacturers/embraer.png",
+        _                                 => ""
+    };
+    string AirlineImg(string? name) => (name?.ToLower() ?? "") switch {
+        var n when n.Contains("ukraine") => "/img/airlines/uia.png",
+        var n when n.Contains("ryanair") => "/img/airlines/ryanair.png",
+        var n when n.Contains("wizz")    => "/img/airlines/wizzair.png",
+        _                                => ""
+    };
 }
 
-<div class="page-header">
-    <h1>
-        @(isCreate ? "✈ Новий літак" : isView ? $"✈ {a.Model}" : $"✏ {a.Model}")
-    </h1>
-    <div class="actions">
-        @if (isView)
-        {
-            <a href="/airplanes/@a.Id/edit" class="btn btn-primary">✏ Редагувати</a>
-        }
-        <a href="/airplanes" class="btn btn-outline">← Назад</a>
+<style>
+    /* ── Page header ── */
+    .form-page-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.75rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    .form-page-header h1 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: .65rem;
+    }
+    .form-page-header .actions { display: flex; gap: .65rem; flex-wrap: wrap; }
+
+    .btn-back {
+        display: inline-flex;
+        align-items: center;
+        gap: .45rem;
+        padding: .5rem 1rem;
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        color: var(--muted);
+        text-decoration: none;
+        font-size: .875rem;
+        font-weight: 500;
+        transition: background .15s, color .15s;
+    }
+    .btn-back:hover { background: var(--border); color: var(--text); }
+    .btn-back svg { width: 14px; height: 14px; }
+
+    .btn-edit-icon {
+        display: inline-flex;
+        align-items: center;
+        gap: .45rem;
+        padding: .5rem 1rem;
+        background: var(--primary);
+        color: #fff;
+        border-radius: 7px;
+        text-decoration: none;
+        font-size: .875rem;
+        font-weight: 600;
+        transition: background .15s;
+    }
+    .btn-edit-icon:hover { background: var(--primary-h); color: #fff; }
+    .btn-edit-icon svg { width: 14px; height: 14px; }
+
+    /* ── VIEW layout ── */
+    .view-layout { display: flex; flex-direction: column; gap: 1.5rem; }
+
+    /* brand cards row */
+    .brand-cards {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.25rem;
+    }
+    @@media (max-width: 600px) { .brand-cards { grid-template-columns: 1fr; } }
+
+    .brand-card {
+        position: relative;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        min-height: 140px;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        background: var(--surface);
+    }
+    .brand-card-bg {
+        position: absolute;
+        inset: 0;
+        background-size: cover;
+        background-position: center;
+        opacity: .35;
+        transition: opacity .3s;
+    }
+    .brand-card:hover .brand-card-bg { opacity: .5; }
+    .brand-card-content {
+        position: relative;
+        z-index: 2;
+        padding: 1.1rem 1.25rem;
+        background: linear-gradient(to top, rgba(15,23,42,.95) 0%, rgba(15,23,42,.4) 100%);
+    }
+    .brand-card-type {
+        font-size: .68rem;
+        text-transform: uppercase;
+        letter-spacing: .09em;
+        font-weight: 700;
+        margin-bottom: .3rem;
+    }
+    .brand-card-type.mfr-label    { color: #6ee7b7; }
+    .brand-card-type.airline-label { color: #c4b5fd; }
+    .brand-card-name {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #f1f5f9;
+        line-height: 1.2;
+        margin-bottom: .2rem;
+    }
+    .brand-card-country {
+        font-size: .8rem;
+        color: rgba(241,245,249,.55);
+    }
+
+    /* main info cards */
+    .info-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .info-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 1.1rem 1.25rem;
+        display: flex;
+        flex-direction: column;
+        gap: .3rem;
+    }
+    .info-card-label {
+        font-size: .7rem;
+        text-transform: uppercase;
+        letter-spacing: .08em;
+        font-weight: 700;
+        color: var(--muted);
+    }
+    .info-card-value {
+        font-size: 1.35rem;
+        font-weight: 700;
+        color: var(--text);
+        line-height: 1.2;
+    }
+    .info-card-sub {
+        font-size: .8rem;
+        color: var(--muted);
+    }
+
+    /* meta strip */
+    .meta-strip {
+        background: rgba(255,255,255,.025);
+        border: 1px solid rgba(255,255,255,.06);
+        border-radius: 8px;
+        padding: .75rem 1.25rem;
+        display: flex;
+        gap: 2rem;
+        flex-wrap: wrap;
+    }
+    .meta-item {
+        display: flex;
+        flex-direction: column;
+        gap: .15rem;
+    }
+    .meta-item-label {
+        font-size: .65rem;
+        text-transform: uppercase;
+        letter-spacing: .08em;
+        color: rgba(148,163,184,.45);
+        font-weight: 600;
+    }
+    .meta-item-value {
+        font-size: .82rem;
+        color: rgba(148,163,184,.55);
+        font-family: 'SF Mono', 'Roboto Mono', monospace;
+    }
+
+    /* ── FORM layout ── */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; }
+</style>
+
+<!-- Header -->
+<div style="@(isView ? "" : "display:flex; justify-content:center;")">
+    <div class="form-page-header" style="@(isView ? "" : "width:100%; max-width:556px;")">
+        <h1>
+            @if (!isView)
+            {
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:.7">
+                    @if (isCreate)
+                    {
+                        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                    }
+                    else
+                    {
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    }
+                </svg>
+            }
+            @(isCreate ? "Новий літак" : isView ? a.Model : $"Редагувати: {a.Model}")
+        </h1>
+        <div class="actions">
+            @if (isView)
+            {
+                <a href="/airplanes/@a.Id/edit" class="btn-edit-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    Редагувати
+                </a>
+            }
+            <a href="/airplanes" class="btn-back">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                Назад
+            </a>
+        </div>
     </div>
 </div>
 
-@* validation summary *@
+<!-- Validation -->
 @if (!ViewData.ModelState.IsValid)
 {
-    <div class="validation-summary">
+    <div class="validation-summary" style="margin-bottom:1.25rem;">
         @foreach (var err in ViewData.ModelState.Values.SelectMany(v => v.Errors))
         {
             <div>@err.ErrorMessage</div>
@@ -35,106 +247,160 @@
     </div>
 }
 
+@* ═══════════════════════ VIEW MODE ═══════════════════════ *@
+@if (isView)
+{
+    <div class="view-layout">
+
+        <!-- 1. Brand cards: Manufacturer + Airline -->
+        <div class="brand-cards">
+            <div class="brand-card">
+                @if (!string.IsNullOrEmpty(MfrImg(a.Manufacturer?.Name)))
+                {
+                    <div class="brand-card-bg" style="background-image:url('@MfrImg(a.Manufacturer?.Name)')"></div>
+                }
+                <div class="brand-card-content">
+                    <div class="brand-card-type mfr-label">Виробник</div>
+                    <div class="brand-card-name">@(a.Manufacturer?.Name ?? "—")</div>
+                    <div class="brand-card-country">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                        @(a.Manufacturer?.Country ?? "—")
+                    </div>
+                </div>
+            </div>
+            <div class="brand-card">
+                @if (!string.IsNullOrEmpty(AirlineImg(a.Airline?.Name)))
+                {
+                    <div class="brand-card-bg" style="background-image:url('@AirlineImg(a.Airline?.Name)')"></div>
+                }
+                <div class="brand-card-content">
+                    <div class="brand-card-type airline-label">Авіакомпанія</div>
+                    <div class="brand-card-name">@(a.Airline?.Name ?? "—")</div>
+                    <div class="brand-card-country">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                        @(a.Airline?.Country ?? "—")
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Editable fields -->
+        <div class="info-grid">
+            <div class="info-card">
+                <div class="info-card-label">Модель</div>
+                <div class="info-card-value">@a.Model</div>
+                <div class="info-card-sub">Назва повітряного судна</div>
+            </div>
+            <div class="info-card">
+                <div class="info-card-label">Реєстраційний номер</div>
+                <div class="info-card-value">@a.RegistrationNumber</div>
+                <div class="info-card-sub">Унікальний бортовий номер</div>
+            </div>
+            <div class="info-card">
+                <div class="info-card-label">Місткість</div>
+                <div class="info-card-value">@a.Capacity <span style="font-size:.85rem; font-weight:400; color:var(--muted);">осіб</span></div>
+                <div class="info-card-sub">Пасажиромісткість борту</div>
+            </div>
+            <div class="info-card">
+                <div class="info-card-label">Рік виробництва</div>
+                <div class="info-card-value">@a.YearManufactured</div>
+                <div class="info-card-sub">Вік: @(DateTime.Now.Year - a.YearManufactured) р.</div>
+            </div>
+            <div class="info-card" style="opacity:.45; border-style:dashed;">
+                <div class="info-card-label">ID запису</div>
+                <div class="info-card-value" style="font-size:.95rem; font-weight:500; color:var(--muted);">#@a.Id</div>
+            </div>
+            <div class="info-card" style="opacity:.45; border-style:dashed;">
+                <div class="info-card-label">Manufacturer ID</div>
+                <div class="info-card-value" style="font-size:.95rem; font-weight:500; color:var(--muted);">@a.ManufacturerId</div>
+            </div>
+            <div class="info-card" style="opacity:.45; border-style:dashed;">
+                <div class="info-card-label">Airline ID</div>
+                <div class="info-card-value" style="font-size:.95rem; font-weight:500; color:var(--muted);">@a.AirlineId</div>
+            </div>
+        </div>
+
+    </div>
+}
+
+@* ═══════════════════════ CREATE / EDIT MODE ═══════════════════════ *@
 @if (!isView)
 {
-    <div class="card">
-        <form method="post" action="@formAction">
-            @Html.AntiForgeryToken()
+    <div style="display:flex; flex-direction:column; align-items:center;">
+        <div class="card" style="width:fit-content; min-width:520px;">
+            <form method="post" action="@formAction">
+                @Html.AntiForgeryToken()
 
-            <div class="form-grid">
-                <div class="form-group">
-                    <label for="Model">Модель</label>
-                    <input id="Model" name="Model" value="@a.Model" placeholder="Boeing 737" />
-                    <span class="field-error">@ViewData.ModelState["Model"]?.Errors.FirstOrDefault()?.ErrorMessage</span>
+                @* Усі поля — 1 колонка *@
+                <div style="display:flex; flex-direction:column; gap:1.1rem; min-width:480px;">
+                    <div class="form-group">
+                        <label for="ManufacturerId">Виробник</label>
+                        <select id="ManufacturerId" name="ManufacturerId">
+                            <option value="0">— Оберіть виробника —</option>
+                            @foreach (var m in Model.Manufacturers)
+                            {
+                                <option value="@m.Id" selected="@(a.ManufacturerId == m.Id)">@m.Name (@m.Country)</option>
+                            }
+                        </select>
+                        <span class="field-error">@ViewData.ModelState["ManufacturerId"]?.Errors.FirstOrDefault()?.ErrorMessage</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="AirlineId">Авіакомпанія</label>
+                        <select id="AirlineId" name="AirlineId">
+                            <option value="0">— Оберіть авіакомпанію —</option>
+                            @foreach (var al in Model.Airlines)
+                            {
+                                <option value="@al.Id" selected="@(a.AirlineId == al.Id)">@al.Name (@al.Country)</option>
+                            }
+                        </select>
+                        <span class="field-error">@ViewData.ModelState["AirlineId"]?.Errors.FirstOrDefault()?.ErrorMessage</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="Model">Модель</label>
+                        <input id="Model" name="Model" value="@a.Model" placeholder="Boeing 737" />
+                        <span class="field-error">@ViewData.ModelState["Model"]?.Errors.FirstOrDefault()?.ErrorMessage</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="RegistrationNumber">Реєстраційний номер</label>
+                        <input id="RegistrationNumber" name="RegistrationNumber" value="@a.RegistrationNumber" placeholder="UR-PSA" />
+                        <span class="field-error">@ViewData.ModelState["RegistrationNumber"]?.Errors.FirstOrDefault()?.ErrorMessage</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="Capacity">Місткість (осіб)</label>
+                        <input id="Capacity" name="Capacity" type="number" min="1" max="1000"
+                               value="@(a.Capacity == 0 ? "" : a.Capacity)" placeholder="189" />
+                        <span class="field-error">@ViewData.ModelState["Capacity"]?.Errors.FirstOrDefault()?.ErrorMessage</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="YearManufactured">Рік виробництва</label>
+                        <input id="YearManufactured" name="YearManufactured" type="number" min="1900" max="2100"
+                               value="@(a.YearManufactured == 0 ? "" : a.YearManufactured)" placeholder="2020" />
+                        <span class="field-error">@ViewData.ModelState["YearManufactured"]?.Errors.FirstOrDefault()?.ErrorMessage</span>
+                    </div>
                 </div>
 
-                <div class="form-group">
-                    <label for="RegistrationNumber">Реєстраційний номер</label>
-                    <input id="RegistrationNumber" name="RegistrationNumber" value="@a.RegistrationNumber" placeholder="UR-PSA" />
-                    <span class="field-error">@ViewData.ModelState["RegistrationNumber"]?.Errors.FirstOrDefault()?.ErrorMessage</span>
+                <div style="margin-top:1.75rem;">
+                    <button type="submit" class="btn btn-primary">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            @if (isCreate)
+                            {
+                                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                            }
+                            else
+                            {
+                                <polyline points="20 6 9 17 4 12"/>
+                            }
+                        </svg>
+                        @(isCreate ? "Створити" : "Зберегти")
+                    </button>
                 </div>
-
-                <div class="form-group">
-                    <label for="Capacity">Місткість (осіб)</label>
-                    <input id="Capacity" name="Capacity" type="number" min="1" max="1000" value="@(a.Capacity == 0 ? "" : a.Capacity)" placeholder="189" />
-                    <span class="field-error">@ViewData.ModelState["Capacity"]?.Errors.FirstOrDefault()?.ErrorMessage</span>
-                </div>
-
-                <div class="form-group">
-                    <label for="YearManufactured">Рік виробництва</label>
-                    <input id="YearManufactured" name="YearManufactured" type="number" min="1900" max="2100"
-                           value="@(a.YearManufactured == 0 ? "" : a.YearManufactured)" placeholder="2020" />
-                    <span class="field-error">@ViewData.ModelState["YearManufactured"]?.Errors.FirstOrDefault()?.ErrorMessage</span>
-                </div>
-
-                <div class="form-group">
-                    <label for="ManufacturerId">Виробник</label>
-                    <select id="ManufacturerId" name="ManufacturerId">
-                        <option value="0">— Оберіть виробника —</option>
-                        @foreach (var m in Model.Manufacturers)
-                        {
-                            <option value="@m.Id" selected="@(a.ManufacturerId == m.Id)">@m.Name (@m.Country)</option>
-                        }
-                    </select>
-                    <span class="field-error">@ViewData.ModelState["ManufacturerId"]?.Errors.FirstOrDefault()?.ErrorMessage</span>
-                </div>
-
-                <div class="form-group">
-                    <label for="AirlineId">Авіакомпанія</label>
-                    <select id="AirlineId" name="AirlineId">
-                        <option value="0">— Оберіть авіакомпанію —</option>
-                        @foreach (var al in Model.Airlines)
-                        {
-                            <option value="@al.Id" selected="@(a.AirlineId == al.Id)">@al.Name (@al.Country)</option>
-                        }
-                    </select>
-                    <span class="field-error">@ViewData.ModelState["AirlineId"]?.Errors.FirstOrDefault()?.ErrorMessage</span>
-                </div>
-            </div>
-
-            <br />
-            <button type="submit" class="btn btn-primary">
-                @(isCreate ? "✔ Створити" : "✔ Зберегти")
-            </button>
-        </form>
-    </div>
-}
-else
-{
-    @* view mode — show full manufacturer and airline details *@
-    <div class="form-grid">
-        <div class="card">
-            <div style="display:flex; flex-direction:column; gap:.9rem;">
-                <div class="form-group">
-                    <label>Модель</label>
-                    <div style="font-size:1.1rem; font-weight:600;">@a.Model</div>
-                </div>
-                <div class="form-group">
-                    <label>Реєстраційний номер</label>
-                    <div>@a.RegistrationNumber</div>
-                </div>
-                <div class="form-group">
-                    <label>Місткість</label>
-                    <div>@a.Capacity осіб</div>
-                </div>
-                <div class="form-group">
-                    <label>Рік виробництва</label>
-                    <div>@a.YearManufactured</div>
-                </div>
-            </div>
-        </div>
-
-        <div style="display:flex; flex-direction:column; gap:1rem;">
-            <div class="detail-block">
-                <span class="label">Виробник</span>
-                <span class="value">@a.Manufacturer?.Name</span>
-                <span class="sub">🌍 @a.Manufacturer?.Country</span>
-            </div>
-            <div class="detail-block">
-                <span class="label">Авіакомпанія</span>
-                <span class="value">@a.Airline?.Name</span>
-                <span class="sub">🌍 @a.Airline?.Country</span>
-            </div>
+            </form>
         </div>
     </div>
 }
+

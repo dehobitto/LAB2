@@ -12,7 +12,26 @@ public class AirplaneRepository(
     public async Task<IEnumerable<Airplane>> GetAllAsync()
     {
         using var conn = db.CreateConnection();
-        return await conn.QueryAsync<Airplane>("SELECT * FROM Airplanes ORDER BY Model");
+        var sql = """
+            SELECT
+                a.Id, a.Model, a.RegistrationNumber, a.Capacity,
+                a.YearManufactured, a.ManufacturerId, a.AirlineId,
+                m.Id, m.Name, m.Country,
+                al.Id, al.Name, al.Country
+            FROM Airplanes a
+            LEFT JOIN Manufacturers m  ON m.Id  = a.ManufacturerId
+            LEFT JOIN Airlines      al ON al.Id = a.AirlineId
+            ORDER BY a.Model
+            """;
+        return await conn.QueryAsync<Airplane, Manufacturer, Airline, Airplane>(
+            sql,
+            (airplane, manufacturer, airline) =>
+            {
+                airplane.Manufacturer = manufacturer;
+                airplane.Airline      = airline;
+                return airplane;
+            },
+            splitOn: "Id,Id");
     }
 
     public async Task<Airplane?> GetByIdAsync(int id)
